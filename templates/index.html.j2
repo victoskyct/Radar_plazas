@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escáner Plazas PDI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0f0f11;
+      --surface:   #18181c;
+      --border:    #2a2a30;
+      --text:      #e8e8ec;
+      --muted:     #6b6b78;
+      --accent:    #f0c040;
+      --new-glow:  rgba(240,192,64,.12);
+      --new-border:#f0c040;
+      --umu:  #0057a8;
+      --umh:  #b5001f;
+      --upct: #005f3c;
+      --ual:  #c04000;
+      --radius: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 28px 40px 24px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .header-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      line-height: 1;
+    }
+    .header-title span { color: var(--accent); }
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* ── Filtros ── */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-btn {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+    .filter-btn.only-new.active {
+      background: var(--new-border);
+      border-color: var(--new-border);
+      color: #000;
+    }
+
+    /* ── Stats bar ── */
+    .stats {
+      display: flex;
+      gap: 32px;
+      padding: 16px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      padding: 22px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: background .15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { background: #1e1e24; }
+    .card.is-new {
+      background: var(--new-glow);
+      border-left: 3px solid var(--new-border);
+      padding-left: 21px;
+    }
+    .card.is-new::before {
+      content: "NUEVA";
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: var(--accent);
+      color: #000;
+      font-family: 'Syne', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      padding: 2px 7px;
+      border-radius: 3px;
+    }
+
+    /* universidad badge */
+    .univ-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Syne', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #fff;
+      padding: 3px 8px 3px 6px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .univ-badge::before {
+      content: "";
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.5);
+    }
+    .univ-UMH  { background: var(--umh); }
+    .univ-UMU  { background: var(--umu); }
+    .univ-UPCT { background: var(--upct); }
+    .univ-UAL  { background: var(--ual); }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--text);
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tag.tipo { border-color: #3a3a44; color: #aaa; }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .fecha { font-size: 12px; color: var(--muted); }
+    .ver-link {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-decoration: none;
+      transition: opacity .15s;
+    }
+    .ver-link:hover { opacity: .7; }
+
+    /* ── Empty state ── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+    .empty h2 { font-family: 'Syne', sans-serif; font-size: 20px; margin-bottom: 8px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 40px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      header, .filters, .stats, footer { padding-left: 20px; padding-right: 20px; }
+      .grid { grid-template-columns: 1fr; }
+      .stats { gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">Plazas <span>PDI</span></div>
+  <div class="header-meta">
+    Última actualización<br>
+    <strong>{{ ultima_actualizacion }}</strong>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <span class="stat-value" id="count-total">{{ plazas | length }}</span>
+    <span class="stat-label">convocatorias</span>
+  </div>
+  <div class="stat">
+    <span class="stat-value" id="count-new" style="color:#f0c040">{{ nuevas_ids | length }}</span>
+    <span class="stat-label">nuevas</span>
+  </div>
+  <div class="stat">
+    <span class="stat-value">{{ universidades | length }}</span>
+    <span class="stat-label">universidades</span>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters">
+  <button class="filter-btn active" data-filter="all">Todas</button>
+  {% for u in universidades %}
+  <button class="filter-btn" data-filter="{{ u }}">{{ u }}</button>
+  {% endfor %}
+  <button class="filter-btn only-new" data-filter="new">⭐ Solo nuevas</button>
+</div>
+
+<!-- Grid de plazas -->
+<div class="grid" id="grid">
+  {% for plaza in plazas %}
+  <div class="card {% if plaza.uid() in nuevas_ids %}is-new{% endif %}"
+       data-univ="{{ plaza.universidad }}"
+       data-new="{{ 'true' if plaza.uid() in nuevas_ids else 'false' }}">
+
+    <span class="univ-badge univ-{{ plaza.universidad }}">{{ plaza.universidad }}</span>
+
+    <div class="card-title">{{ plaza.titulo }}</div>
+
+    <div class="card-meta">
+      {% if plaza.tipo %}
+      <span class="tag tipo">{{ plaza.tipo }}</span>
+      {% endif %}
+      {% if plaza.referencia %}
+      <span class="tag">Ref. {{ plaza.referencia }}</span>
+      {% endif %}
+      {% if plaza.fuente %}
+      <span class="tag">{{ plaza.fuente }}</span>
+      {% endif %}
+    </div>
+
+    <div class="card-footer">
+      <span class="fecha">{{ plaza.fecha.strftime('%d %b %Y') }}</span>
+      <a class="ver-link" href="{{ plaza.enlace }}" target="_blank" rel="noopener">
+        Ver →
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty">
+    <h2>Sin resultados</h2>
+    <p>No se han encontrado convocatorias en este momento.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<footer>
+  <span>Escáner automatizado · GitHub Actions · Actualización diaria</span>
+  <span>{{ plazas | length }} convocatorias de {{ universidades | join(', ') }}</span>
+</footer>
+
+<script>
+  const cards = Array.from(document.querySelectorAll('.card'));
+  const btns  = Array.from(document.querySelectorAll('.filter-btn'));
+  const countEl = document.getElementById('count-total');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const f = btn.dataset.filter;
+      let visible = 0;
+      cards.forEach(c => {
+        let show = false;
+        if (f === 'all')  show = true;
+        else if (f === 'new') show = c.dataset.new === 'true';
+        else show = c.dataset.univ === f;
+
+        c.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      countEl.textContent = visible;
+    });
+  });
+</script>
+</body>
+</html>

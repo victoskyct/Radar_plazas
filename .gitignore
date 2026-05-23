@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# El HTML generado se sí versiona (es lo que sirve GitHub Pages)
+# El estado también se versiona (es la memoria del bot)
+# Nada más necesita excluirse
