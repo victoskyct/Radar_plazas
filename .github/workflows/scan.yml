@@ -1,37 +1,32 @@
 name: Escáner Plazas PDI
 
 on:
-  # Ejecución automática: cada día a las 7:00 UTC (9:00 hora peninsular en verano)
   schedule:
     - cron: '0 7 * * *'
-
-  # Permite lanzarlo manualmente desde la pestaña Actions del repo
   workflow_dispatch:
 
 permissions:
-  contents: write   # necesario para hacer git push del estado y el HTML
+  contents: write
 
 jobs:
   scan:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Descarga el repo
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Configura Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
 
-      # 3. Instala dependencias
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      # 4. Ejecuta el escáner
       - name: Ejecutar escáner
         run: python main.py
         env:
@@ -39,12 +34,11 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           MAIL_TO:   ${{ secrets.MAIL_TO }}
 
-      # 5. Guarda los cambios (estado + HTML) en el repo
       - name: Guardar cambios
         run: |
           git config user.name  "escaner-pdi-bot"
           git config user.email "bot@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add state/ docs/
-          # Solo hace commit si hay cambios reales
           git diff --staged --quiet || git commit -m "chore: actualización $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push

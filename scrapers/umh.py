@@ -1,18 +1,17 @@
 """
-Scraper UMH – Universidad Miguel Hernández de Elche
+Scraper UMH - Universidad Miguel Hernandez de Elche
 ====================================================
-Fuentes HTML:
-  · PDI Contratado  → servicioprofesorado.umh.es/concursos-acceso/pdi-contratado/
-  · PDI Funcionario → servicioprofesorado.umh.es/concursos-acceso/funcionarios/
+Para convocatorias urgentes/diversas: entra al detalle del post,
+extrae el link al PDF del BOUMH, intenta leerlo para filtrar por area.
+Si el PDF no es accesible, incluye la plaza con link al PDF para revision manual.
 """
 
 import re
 from datetime import datetime, timezone, timedelta
-
-import requests
-from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 from .base import Plaza
+from .utils import nueva_sesion, fetch_html, area_en_texto, extraer_snippet_area, fetch_texto_pdf
 
 BASE = "https://servicioprofesorado.umh.es"
 
@@ -21,68 +20,52 @@ FUENTES = [
     ("UMH Funcionario", f"{BASE}/concursos-acceso/funcionarios/"),
 ]
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "es-ES,es;q=0.9",
-}
-
-# ── Filtro de áreas (igual que UPCT) ─────────────────────────────────────────
-AREAS_INTERES = [
-    "econom",        # Economía, Economía Aplicada, Economía Agraria…
-    "empresa",       # Organización de Empresas, Economía de la Empresa…
-    "hacienda",
-    "finanzas",
-    "contabilidad",
-    "marketing",
-    "comercializ",
-]
-
-# Solo convocatorias nuevas (no actas, listas provisionales, citaciones…)
 _ES_CONVOCATORIA = re.compile(
     r"convocatoria.*(plaza|concurso|proceso\s+de\s+selecci[oó]n|provisi[oó]n)",
     re.IGNORECASE,
 )
-_REF   = re.compile(r"referencia[:\s]+([0-9A-Z]+/[0-9]+)", re.IGNORECASE)
+_REF   = re.compile(r"referencia[:\s]+([0-9A-Z/]+)", re.IGNORECASE)
 _TIPO  = re.compile(
-    r"\b(ASO(?:CCS)?|AYUDOC|AYU|PPL|PCD|TU|CU|PI[FP]|SUSTITUT\w*|ASOCIADO|AYUDANTE\s+DOCTOR)\b",
+    r"\b(ASO(?:CCS)?|AYUDOC|PPL|PCD|TU|CU|SUSTITUT\w*|ASOCIADO|AYUDANTE\s+DOCTOR)\b",
     re.IGNORECASE,
 )
 _FECHA = re.compile(r"(\d{2}/\d{2}/\d{4})")
-
-# Solo plazas publicadas en los últimos N días
 DIAS_MAX = 180
 
+# Regex para detectar titulos que no tienen area en el titulo
+_TITULO_GENERICO = re.compile(
+    r"proceso\s+de\s+selecci[oó]n\s+urgente|diversas|varias\s+[aá]reas",
+    re.IGNORECASE,
+)
 
-def _area_relevante(titulo: str) -> bool:
-    t = titulo.lower()
-    # "proceso de selección urgente" sin área especificada → siempre pasa
-    # (el área concreta está en el PDF adjunto, no en el título)
-    if "proceso de selecci" in t and "urgente" in t:
-        return True
-    # "diversas" → puede incluir el área aunque no lo diga
-    if "diversas" in t or "varias" in t:
-        return True
-    return any(area in t for area in AREAS_INTERES)
+
+def _get_boumh_pdf(enlace: str, session) -> str | None:
+    """Visita la pagina de detalle del post y devuelve el link al PDF del BOUMH."""
+    soup = fetch_html(enlace, session, referer=BASE)
+    if not soup:
+        return None
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        txt = a.get_text(strip=True).lower()
+        # El link suele decir "BOUMH" o "publicacion" y apunta a boumh.umh.es
+        if "boumh" in href or "boumh" in txt or "boletin" in txt:
+            return href if href.startswith("http") else urljoin(BASE, href)
+        # Tambien puede ser un PDF directo en el post
+        if href.endswith(".pdf") and "umh.es" in href:
+            return href
+    return None
 
 
 def scrape_umh() -> list[Plaza]:
     plazas: list[Plaza] = []
-    vistos: set[str] = set()          # para deduplicar por URL
+    vistos: set[str] = set()
     fecha_limite = datetime.now(tz=timezone.utc) - timedelta(days=DIAS_MAX)
+    session = nueva_sesion()
 
     for fuente, url in FUENTES:
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=20)
-            r.raise_for_status()
-        except requests.RequestException as e:
-            print(f"[UMH] Error al obtener {url}: {e}")
+        soup = fetch_html(url, session)
+        if not soup:
             continue
-
-        soup = BeautifulSoup(r.text, "lxml")
 
         for li in soup.select("li"):
             a = li.find("a", href=True)
@@ -90,53 +73,61 @@ def scrape_umh() -> list[Plaza]:
                 continue
 
             texto = a.get_text(" ", strip=True)
-
             if not _ES_CONVOCATORIA.search(texto):
                 continue
 
             enlace = a["href"]
             if not enlace.startswith("http"):
                 enlace = BASE + enlace
-
-            # ── Deduplicar ────────────────────────────────────────────────
             if enlace in vistos:
                 continue
             vistos.add(enlace)
 
-            # ── Fecha ─────────────────────────────────────────────────────
+            # Fecha
             fecha_m = _FECHA.search(texto)
             if fecha_m:
                 try:
-                    fecha = datetime.strptime(fecha_m.group(1), "%d/%m/%Y").replace(
-                        tzinfo=timezone.utc
-                    )
+                    fecha = datetime.strptime(fecha_m.group(1), "%d/%m/%Y").replace(tzinfo=timezone.utc)
                 except ValueError:
                     fecha = datetime.now(tz=timezone.utc)
             else:
-                # Intenta extraer del path de la URL (formato /YYYY/MM/DD/)
-                url_fecha = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", enlace)
-                if url_fecha:
-                    fecha = datetime(
-                        int(url_fecha.group(1)),
-                        int(url_fecha.group(2)),
-                        int(url_fecha.group(3)),
-                        tzinfo=timezone.utc,
-                    )
-                else:
-                    fecha = datetime.now(tz=timezone.utc)
+                uf = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", enlace)
+                fecha = (datetime(int(uf.group(1)), int(uf.group(2)), int(uf.group(3)), tzinfo=timezone.utc)
+                         if uf else datetime.now(tz=timezone.utc))
 
-            # ── Filtro por antigüedad ─────────────────────────────────────
             if fecha < fecha_limite:
                 continue
 
-            # ── Filtro por área ───────────────────────────────────────────
             titulo = _FECHA.sub("", texto).strip().lstrip("-·/ ").strip()
-            if not _area_relevante(titulo):
-                continue
+            descripcion = None
+
+            if area_en_texto(titulo):
+                # Area ya visible en el titulo → incluir
+                pass
+
+            elif _TITULO_GENERICO.search(titulo):
+                # Titulo generico: buscar PDF del BOUMH en el detalle
+                print(f"[UMH] Buscando PDF BOUMH: {titulo[:50]}...")
+                pdf_url = _get_boumh_pdf(enlace, session)
+
+                if pdf_url:
+                    # Intentar leer el PDF para filtrar por area
+                    texto_pdf = fetch_texto_pdf(pdf_url, session)
+                    if texto_pdf:
+                        if not area_en_texto(texto_pdf):
+                            continue  # PDF accesible pero sin nuestras areas → descartar
+                        descripcion = extraer_snippet_area(texto_pdf, ventana=120)
+                    else:
+                        # PDF bloqueado: incluir con link para revision manual
+                        descripcion = f"Ver areas en BOUMH: {pdf_url}"
+                else:
+                    # Sin PDF encontrado: incluir con nota
+                    descripcion = "Ver areas en PDF adjunto (acceder al enlace)"
+            else:
+                continue  # Sin area y sin patron generico → descartar
 
             ref_m  = _REF.search(titulo)
             tipo_m = _TIPO.search(titulo)
-
             plazas.append(Plaza(
                 universidad="UMH",
                 titulo=titulo,
@@ -144,6 +135,7 @@ def scrape_umh() -> list[Plaza]:
                 tipo=tipo_m.group(1).upper() if tipo_m else None,
                 fecha=fecha,
                 enlace=enlace,
+                descripcion=descripcion,
                 fuente=fuente,
             ))
 

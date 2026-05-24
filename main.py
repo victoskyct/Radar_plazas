@@ -20,7 +20,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from scrapers import Plaza, scrape_umh, scrape_umu, scrape_upct, scrape_ual
+from scrapers import Plaza, scrape_umh, scrape_umu, scrape_upct, scrape_ua, scrape_ual
 
 # ── Rutas ────────────────────────────────────────────────────────────────────
 ROOT       = Path(__file__).parent
@@ -31,9 +31,10 @@ TEMPLATES   = ROOT / "templates"
 # ── Scrapers activos (comenta los que aún no estén implementados) ─────────────
 SCRAPERS = [
     scrape_umh,
-    # scrape_umu,    # descomentar cuando esté listo
     scrape_upct,
-    # scrape_ual,    # descomentar cuando esté listo
+    scrape_ua,
+    scrape_ual,
+    scrape_umu,    # best-effort (ConvocUM es dinámico)
 ]
 
 
@@ -111,6 +112,8 @@ def enviar_email(nuevas: list[Plaza]) -> None:
             lineas.append(f"🔖  Tipo: {p.tipo}")
         if p.referencia:
             lineas.append(f"🔢  Ref: {p.referencia}")
+        if p.descripcion:
+            lineas.append(f"📍  Área: {p.descripcion}")
         lineas.append(f"📅  {p.fecha.strftime('%d/%m/%Y')}")
         lineas.append(f"🔗  {p.enlace}")
     lineas.append(f"\n{'─'*60}")
