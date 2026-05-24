@@ -108,8 +108,9 @@ def _bloque_plaza(p: Plaza) -> list[str]:
     return lineas
 
 
-def enviar_email(nuevas_principales: list[Plaza], nuevas_boe: list[Plaza]) -> None:
-    if not nuevas_principales and not nuevas_boe:
+def enviar_email(nuevas_principales: list[Plaza], nuevas_boe: list[Plaza],
+                 boe_ejecutado: bool = False) -> None:
+    if not nuevas_principales and not nuevas_boe and not boe_ejecutado:
         print("[EMAIL] Sin novedades, no se envia email.")
         return
 
@@ -138,13 +139,17 @@ def enviar_email(nuevas_principales: list[Plaza], nuevas_boe: list[Plaza]) -> No
         lineas.append("Sin novedades en las universidades monitorizadas.\n")
 
     # -- Seccion BOE --
+    lineas.append(f"\n\n{'═'*60}")
     if nuevas_boe:
-        lineas.append(f"\n\n{'═'*60}")
         lineas.append(f"📰  OTRAS PLAZAS (BOE) — {len(nuevas_boe)} nueva(s)")
         lineas.append(f"{'═'*60}")
         lineas.append("Plazas en otras universidades espanolas de interes:\n")
         for p in nuevas_boe:
             lineas.extend(_bloque_plaza(p))
+    else:
+        lineas.append("📰  OTRAS PLAZAS (BOE)")
+        lineas.append(f"{'═'*60}")
+        lineas.append("No se encontraron plazas nuevas de interes en el BOE en los ultimos 7 dias.")
 
     lineas.append(f"\n{'─'*60}")
     lineas.append("Este email ha sido generado automaticamente por el escaner PDI.")
@@ -198,7 +203,7 @@ def main() -> None:
     generar_html(principales, boe, nuevas_principales, nuevas_boe)
 
     # 5. Email
-    enviar_email(nuevas_principales, nuevas_boe)
+    enviar_email(nuevas_principales, nuevas_boe, boe_ejecutado=len(SCRAPERS_BOE) > 0)
 
     # 6. Guardar estado
     if principales or boe:
