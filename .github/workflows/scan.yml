@@ -1,7 +1,7 @@
 name: Escáner Plazas PDI
 
 on:
-  schedule:
+  schedule: 
     - cron: '0 7 * * 3,5'
   workflow_dispatch:
 
