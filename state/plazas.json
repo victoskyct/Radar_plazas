@@ -2,7 +2,9 @@
   "ids": [
     "UAL::https://www.ual.es/universidad/serviciosgenerales/recursoshumanos/convocatorias/personal-docente-e-investigador-laboral/profesorado-contratado-doctor",
     "UAL::https://www.ual.es/universidad/serviciosgenerales/recursoshumanos/convocatorias/personal-docente-e-investigador-laboral/profesorado-contratado-doctor",
+    "UMH::https://servicioprofesorado.umh.es/2026/04/24/convocatoria-proceso-de-seleccion-urgente-de-profesorado-referencia-00953-2026/",
     "UAL::https://www.ual.es/universidad/serviciosgenerales/recursoshumanos/convocatorias/personal-docente-e-investigador-laboral/profesores-ayudantes-doctores",
+    "UMH::https://servicioprofesorado.umh.es/2026/03/18/convocatoria-proceso-de-seleccion-urgente-de-profesorado-referencia-00707-2026/",
     "UMH::https://servicioprofesorado.umh.es/2026/01/29/convocatoria-proceso-de-seleccion-urgente-de-profesorado-referencia-00265-2026/",
     "UPCT::https://www.upct.es/convocatorias/actpdi/detalle.php?id_cat=2&id=230",
     "UPCT::https://www.upct.es/convocatorias/actpdi/detalle.php?id_cat=2&id=226",
@@ -10,5 +12,5 @@
     "UAL::https://www.ual.es/universidad/serviciosgenerales/recursoshumanos/convocatorias/cuerpos-docentes",
     "UPCT::https://www.upct.es/convocatorias/actpdi/detalle.php?id_cat=2&id=221"
   ],
-  "ultima_actualizacion": "2026-07-15T09:10:44.277159+00:00"
+  "ultima_actualizacion": "2026-07-17T09:10:45.785502+00:00"
 }
